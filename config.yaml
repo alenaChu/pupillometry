@@ -1,0 +1,9 @@
+# fill src_dir to process the whole directory OR video_path to process 1 video
+src_dir:  ../data/eyes    #diving_hd_shortlist   #/bike/bike_test
+video_path: #../data/eyes/mov/convert5_long.mov
+output_dir: results/
+
+frames_to_process: #[0, 100] # Frame range to process, like [0, 500]. Leave blank to process full video
+
+apply_tracker: true
+debug: false
