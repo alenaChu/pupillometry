@@ -15,23 +15,19 @@ class EyeTracker:
     def initialize(self, iris, pupil):
         if iris is not None:
             self.eye_center_tracker = self.initialize_kalman_2d(iris[:2])
-            self.iris_diameter_tracker = self.initialize_kalman_1d((iris[3] + iris[4]) / 2)
-            self.prediction = iris[1:4]
+            self.iris_diameter_tracker = self.initialize_kalman_1d(iris[2])
+            self.prediction = iris
             if pupil is not None:
-                self.pupil_diameter_tracker = self.initialize_kalman_1d((pupil[3] + pupil[4]) / 2)
-                self.prediction_pupil = pupil[3]
+                self.pupil_diameter_tracker = self.initialize_kalman_1d(pupil[2])
+                self.prediction_pupil = pupil[2]
 
     def update_trackers(self, iris, pupil):
-        if iris is not None and np.array(iris).shape[0] > 3:
-            self.eye_center_tracker.update(np.array(iris[1:3]))
-            self.iris_diameter_tracker.update(iris[3])
-        elif iris is not None:
-            self.eye_center_tracker.update(np.array(iris[:2]))
-            self.iris_diameter_tracker.update(iris[2])
+        self.eye_center_tracker.update(np.array(iris[:2]))
+        self.iris_diameter_tracker.update(iris[2])
         if self.pupil_diameter_tracker is None:
             return
         if pupil is not None and (type(pupil) is list or type(pupil) is np.array):
-            self.pupil_diameter_tracker.update(pupil[3])
+            self.pupil_diameter_tracker.update(pupil[2])
         elif pupil is not None:
             self.pupil_diameter_tracker.update(pupil)
 
@@ -42,15 +38,14 @@ class EyeTracker:
 
         dist_far = 10
         dist_near = 3
-
         if iris is not None:
-            iris_center = np.array(iris[1:3])
+            iris_center = np.array(iris[:2])
 
-            if abs(iris[3] - self.prediction[2]) < dist_near and \
+            if abs(iris[2] - self.prediction[2]) < dist_near and \
                     np.linalg.norm(iris_center - np.array(self.prediction[:2])) < dist_near:
                 self.outliers_num = 0
                 self.update_trackers(iris, pupil)
-            elif abs(iris[3] - np.array(self.prediction[2])) > dist_far or \
+            elif abs(iris[2] - np.array(self.prediction[2])) > dist_far or \
                     np.linalg.norm(iris_center - np.array(self.prediction[:2])) > dist_far:
                 self.outliers_num += 1
                 if self.outliers_num > 10:

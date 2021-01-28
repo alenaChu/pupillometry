@@ -73,11 +73,11 @@ class VideoProcessor:
             if frame_number < frame_range[0]:
                 continue
 
-            eyes, pupils, irises, eye_ar = predict_frame(frame, self.detector, self.predictor, self.eye_trackers)
+            eyes, pupils, irises = predict_frame(frame, self.detector, self.predictor, self.eye_trackers)
 
             if self.config.get('save_eye_patches', False):
                 save_eye_patches(eyes, frame, frame_number)
-            frame = annotate_frame(frame, eyes, pupils, irises, eye_ar, frame_label=frame_number)
+            frame = annotate_frame(frame, pupils, irises, eyes, frame_label=frame_number)
             video_writer.write(frame)
 
 
