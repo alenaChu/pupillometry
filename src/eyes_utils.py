@@ -36,7 +36,7 @@ def detect_eyes(frame, detector, predictor):
 def predict_frame(frame, detector, predictor, eye_trackers=(None, None)):
     l_eye, r_eye = detect_eyes(frame, detector, predictor)
     if l_eye is None and r_eye is None:
-        return None, None, None, 0
+        return None, None, None
     if l_eye is not None:
         l_pupil, l_iris = get_pupil_and_iris_params(l_eye, frame, eye_trackers[0])
         if eye_trackers[0] is not None:
@@ -68,7 +68,7 @@ def get_pupil_and_iris_params(eye_params, frame, tracker=None, eye=None):
     scale_factor = 120 / max(eye.shape)
     eye_scaled = cv2.resize(eye, dsize=None, fx=scale_factor, fy=scale_factor)
     eye_gray = cv2.cvtColor(eye_scaled, cv2.COLOR_BGR2GRAY)
-    eye_gray = cv2.equalizeHist(eye_gray)
+    # eye_gray = cv2.equalizeHist(eye_gray)
 
     if tracker is not None and tracker.prediction is not None:
         tracker_iris = tracker.prediction.copy()
@@ -99,24 +99,25 @@ def get_pupil_and_iris_params(eye_params, frame, tracker=None, eye=None):
 
 
 def get_best_iris(eye, tracker_iris, debug, output=None):
-    all_edges = (feature.canny(eye_gray, sigma=2) * 255).astype('uint8')
+    all_edges = (feature.canny(eye, sigma=2) * 255).astype('uint8')
     if np.sum(all_edges > 0) / (all_edges.shape[0] * all_edges.shape[1]) < 0.03:
-        all_edges = (feature.canny(eye_gray, sigma=1) * 255).astype('uint8')
+        all_edges = (feature.canny(eye, sigma=1) * 255).astype('uint8')
     masked_edges = np.zeros_like(all_edges)
-    if True:
-        yc, xc = int(eye.shape[0] / 2), int(eye.shape[1] / 2)
-        a_max = max(eye.shape[0] - yc, yc)
-        a_min = int(a_max / 2)
-        masked_edges[:, xc - a_max: xc + a_max] = all_edges[:, xc - a_max: xc + a_max]
+        
+    # take central square 
+    yc, xc = int(eye.shape[0] / 2), int(eye.shape[1] / 2)
+    a_max = max(eye.shape[0] - yc, yc)
+    a_min = int(a_max / 2)
+    masked_edges[:, xc - a_max: xc + a_max] = all_edges[:, xc - a_max: xc + a_max]
 
     # try to find circle on masked edges
     best_iris = None
-    hough_res = hough_circle(all_edges, list(range(a_min, a_max)))
+    hough_res = hough_circle(masked_edges, list(range(a_min, a_max)))
     if hough_res is not None and len(hough_res) > 0:
         accums, cx, cy, radii = hough_circle_peaks(hough_res, list(range(a_min, a_max)), total_num_peaks=16)
         if len(radii) > 0:
             # weights = [(abs(cy[i] - yc) + abs(cx[i] - xc)) for i in range(len(cx))]
-            weights = [eye[cy[i]][cx[i]] / 4 for i in range(len(cx))]
+            weights = [eye[cy[i]][cx[i]] / 2 for i in range(len(cx))]
             if tracker_iris is not None:
                 weights = [weights[i] + abs(radii[i] - tracker_iris[2]) +
                            max(abs(cx[i] - tracker_iris[1]), abs(cy[i] - tracker_iris[0]))
@@ -124,7 +125,7 @@ def get_best_iris(eye, tracker_iris, debug, output=None):
             iris_id = np.argmin(weights)
 
             best_iris = [cy[iris_id], cx[iris_id], radii[iris_id]]
-            if debug and output is not None:
+            if debug is True and output is not None:
                 cv2.imshow(f"masked_edges_iris", masked_edges)
 
     return best_iris
@@ -156,7 +157,6 @@ def get_best_pupil(eye, best_iris, tracker_pupil=0, debug=False):
             mask1 = np.zeros(eye.shape[:2], dtype=np.uint8)
             mask1 = cv2.circle(mask1, (cx[i], cy[i]), radii[i], (1, 1, 1), -1)
             mask1 = cv2.circle(mask1, (int(best_iris[1]), int(best_iris[0])), int(best_iris[2] - 2), (1, 1, 1), 1)
-            cv2.imshow(f"pupil {i}", mask1 * 255)
 
             mean_intensity = np.sum(eye * mask1) / (radii[i] * radii[i] * np.pi)
             weights += [mean_intensity / 4 + abs(cy[i] - best_iris[0]) + abs(cx[i] - best_iris[1])]
