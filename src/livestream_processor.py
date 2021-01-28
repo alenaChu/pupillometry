@@ -21,9 +21,9 @@ class LifeStreamProcessor:
 
         while 1:
             ret, img = cap.read()
-            eyes, pupils, irises, eye_ar = predict_frame(img, self.detector, self.predictor, self.eye_trackers)
+            eyes, pupils, irises = predict_frame(img, self.detector, self.predictor, self.eye_trackers)
 
-            img = annotate_frame(img, eyes, pupils, irises, eye_ar)
+            img = annotate_frame(img, pupils, irises, eyes)
 
             cv2.imshow('img', img)
             k = cv2.waitKey(30) & 0xff
